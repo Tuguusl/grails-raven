@@ -10,97 +10,99 @@ import javax.servlet.http.HttpServletRequest
 
 class RavenClient {
 
-    private URL endpoint
-    private Connection connection
-    private Configuration config
+	private URL endpoint
+	private Connection connection
+	private Configuration config
 
-    public RavenClient(String dsn) {
-        this(new Configuration([dsn:dsn]))
-    }
+	public RavenClient(String dsn) {
+		this(new Configuration([dsn:dsn]))
+	}
 
-    public RavenClient(Configuration config) {
-        this.config = config
-        this.connection = new Connection(config)
-    }
+	public RavenClient(Configuration config) {
+		this.config = config
+		this.connection = new Connection(config)
+	}
 
-    def captureMessage(String message) {
-        send(message, null, 'root', 'info', null, null)
-    }
+	def captureMessage(String message) {
+		send(message, null, 'root', 'info', null, null, null, null)
+	}
 
-    def captureMessage(String message, String loggerName, String logLevel) {
-        send(message, null, loggerName, logLevel, null, null)
-    }
+	def captureMessage(String message, String loggerName, String logLevel) {
+		send(message, null, loggerName, logLevel, null, null, null, null)
+	}
 
-    def captureException(Throwable exception) {
-        send(exception.getMessage(), null, 'root', 'error', null, null)
-    }
+	def captureException(Throwable exception) {
+		send(exception.getMessage(), null, 'root', 'error', null, null, null, null)
+	}
 
-    def captureException(Throwable exception, String loggerName, String logLevel, HttpServletRequest request) {
-        send(exception.getMessage(), exception, loggerName, logLevel, request, null)
-    }
+	def captureException(Throwable exception, String loggerName, String logLevel, HttpServletRequest request) {
+		send(exception.getMessage(), exception, loggerName, logLevel, request, null, null, null)
+	}
 
-    def captureEvent(LoggingEvent event, HttpServletRequest request, Map currentUser) {
-        long timestamp = timestampLong()
-        Level level = event.getLevel()
-        String logLevel = (level ? level.toString().toLowerCase() : "root")
-        String message = event.message.toString()
-        String loggerName = event.getLoggerName()
-        def exception = event.throwableInformation?.throwable
+	def captureEvent(LoggingEvent event, HttpServletRequest request, Map currentUser) {
+		long timestamp = timestampLong()
+		Level level = event.getLevel()
+		String logLevel = (level ? level.toString().toLowerCase() : "root")
+		String message = event.message.toString()
+		String loggerName = event.getLoggerName()
+		def exception = event.throwableInformation?.throwable		
+		String ndcStr = event.getNDC();		
+		Map<String, String> mdcMap = event.getProperties();
 
-        send(message, exception, loggerName, logLevel, request, currentUser)
-    }
+		send(message, exception, loggerName, logLevel, request, currentUser, ndcStr, mdcMap)
+	}
 
-    private void send(String message, Throwable exception, String loggerName, String logLevel, HttpServletRequest request, Map userData) {
-        if (config.active) {
-            String eventId = generateEventId()
-            String checksum = generateChecksum(message)
-            long timestamp = timestampLong()
-            User user = (userData ? new User(userData.is_authenticated, userData) : null)
+	private void send(String message, Throwable exception, String loggerName, String logLevel, HttpServletRequest request, Map userData, String ndc, Map<String, String> mdc) {
+		if (config.active) {
+			String eventId = generateEventId()
+			String checksum = generateChecksum(message)
+			long timestamp = timestampLong()
+			User user = (userData ? new User(userData.is_authenticated, userData) : null)
 
-            String body = buildMessage(eventId, message, checksum, exception, loggerName, logLevel, request, user, timestamp)
-            doSend(body, timestamp)
-        }
-    }
+			String body = buildMessage(eventId, message, checksum, exception, loggerName, ndc, mdc, logLevel, request, user, timestamp)
+			doSend(body, timestamp)
+		}
+	}
 
-    private void doSend(String message, long timestamp) {
-        try {
-            connection.send(message, timestamp)
-        } catch (IOException e) {
-            e.printStackTrace()
-        }
-    }
+	private void doSend(String message, long timestamp) {
+		try {
+			connection.send(message, timestamp)
+		} catch (IOException e) {
+			e.printStackTrace()
+		}
+	}
 
-    private String buildMessage(String eventId, String message, String checksum, Throwable exception, String loggerName, String logLevel, HttpServletRequest request, User user, Long timestamp) {
-        String jsonMessage = Events.build(eventId, message, checksum, exception, loggerName, logLevel, request, user, timestampString(timestamp), config)
+	private String buildMessage(String eventId, String message, String checksum, Throwable exception, String loggerName, String logLevel, String ndc, Map<String, String> mdc, HttpServletRequest request, User user, Long timestamp) {
+		
+		String jsonMessage = Events.build(eventId, message, checksum, exception, loggerName, logLevel, ndc, mdc, request, user, timestampString(timestamp), config)
+		return buildMessageBody(jsonMessage)
+	}
 
-        return buildMessageBody(jsonMessage)
-    }
+	private String buildMessageBody(String jsonMessage) {
+		return jsonMessage.bytes.encodeBase64().toString()
+	}
 
-    private String buildMessageBody(String jsonMessage) {
-        return jsonMessage.bytes.encodeBase64().toString()
-    }
+	def setUserData(Map user) {
+		def request = RequestContextHolder.currentRequestAttributes().getRequest()
+		request['sentryUserData'] = user
+	}
 
-    def setUserData(Map user) {
-        def request = RequestContextHolder.currentRequestAttributes().getRequest()
-        request['sentryUserData'] = user
-    }
+	//// Utils
 
-//// Utils
+	private String generateEventId() {
+		return (UUID.randomUUID() as String).replaceAll("-", "")
+	}
 
-    private String generateEventId() {
-        return (UUID.randomUUID() as String).replaceAll("-", "")
-    }
+	private String generateChecksum(String message) {
+		return message.encodeAsMD5()
+	}
 
-    private String generateChecksum(String message) {
-        return message.encodeAsMD5()
-    }
+	private long timestampLong() {
+		return System.currentTimeMillis()
+	}
 
-    private long timestampLong() {
-        return System.currentTimeMillis()
-    }
-
-    private String timestampString(long timestamp) {
-        java.util.Date date = new java.util.Date(timestamp)
-        return DateFormatUtils.formatUTC(date, DateFormatUtils.ISO_DATETIME_FORMAT.getPattern())
-    }
+	private String timestampString(long timestamp) {
+		java.util.Date date = new java.util.Date(timestamp)
+		return DateFormatUtils.formatUTC(date, DateFormatUtils.ISO_DATETIME_FORMAT.getPattern())
+	}
 }
