@@ -45,8 +45,8 @@ class RavenClient {
 		String logLevel = (level ? level.toString().toLowerCase() : "root")
 		String message = event.message.toString()
 		String loggerName = event.getLoggerName()
-		def exception = event.throwableInformation?.throwable		
-		String ndcStr = event.getNDC();		
+		def exception = event.throwableInformation?.throwable
+		String ndcStr = event.getNDC();
 		Map<String, String> mdcMap = event.getProperties();
 
 		send(message, exception, loggerName, logLevel, request, currentUser, ndcStr, mdcMap)
@@ -72,8 +72,8 @@ class RavenClient {
 		}
 	}
 
-	private String buildMessage(String eventId, String message, String checksum, Throwable exception, String loggerName, String logLevel, String ndc, Map<String, String> mdc, HttpServletRequest request, User user, Long timestamp) {
-		
+	private String buildMessage(String eventId, String message, String checksum, Throwable exception, String loggerName, String ndc, Map<String, String> mdc, String logLevel, HttpServletRequest request, User user, Long timestamp) {
+
 		String jsonMessage = Events.build(eventId, message, checksum, exception, loggerName, logLevel, ndc, mdc, request, user, timestampString(timestamp), config)
 		return buildMessageBody(jsonMessage)
 	}
