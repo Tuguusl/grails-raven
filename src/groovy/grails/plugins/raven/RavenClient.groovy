@@ -40,6 +40,7 @@ class RavenClient {
 	}
 
 	def captureEvent(LoggingEvent event, HttpServletRequest request, Map currentUser) {
+        throw new RuntimeException();
 		long timestamp = timestampLong()
 		Level level = event.getLevel()
 		String logLevel = (level ? level.toString().toLowerCase() : "root")

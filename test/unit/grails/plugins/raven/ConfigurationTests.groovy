@@ -1,10 +1,11 @@
 package grails.plugins.raven
 
-import grails.plugins.raven.Configuration
 import grails.test.*
-import org.codehaus.groovy.grails.commons.ConfigurationHolder
+import grails.util.Holders
 
 class ConfigurationTests extends GrailsUnitTestCase {
+    
+    def grailsApplication = Holders.getGrailsApplication();
 
 	protected void setUp() {
 		super.setUp()
@@ -23,7 +24,7 @@ class ConfigurationTests extends GrailsUnitTestCase {
             grails.plugins.raven.active = true
         ''')
 
-		Configuration config = new Configuration([clientVersion:testClientVersion] + ConfigurationHolder.config.grails.plugins.raven)
+		Configuration config = new Configuration([clientVersion:testClientVersion] + grailsApplication.config.grails.plugins.raven)
 
 		assertTrue config.active
 		assertEquals testDSN, config.dsn
@@ -42,7 +43,7 @@ class ConfigurationTests extends GrailsUnitTestCase {
             grails.plugins.raven.active = true
         ''')
 
-		Configuration config = new Configuration(ConfigurationHolder.config.grails.plugins.raven)
+		Configuration config = new Configuration(grailsApplication.config.grails.plugins.raven)
 
 		assertTrue config.active
 		assertEquals "123", config.projectId
@@ -52,20 +53,20 @@ class ConfigurationTests extends GrailsUnitTestCase {
 	public void testConfigurationSentryURL() {
 		// No port configuration
 		mockConfig('''grails.plugins.raven.dsn = "https://abc:efg@app.getsentry.com/123"''')
-		Configuration config = new Configuration(ConfigurationHolder.config.grails.plugins.raven)
+		Configuration config = new Configuration(grailsApplication.config.grails.plugins.raven)
 
 		assertEquals "https://app.getsentry.com/api/store/", config.sentryURL
 
 		// With port configuration
 		mockConfig('''grails.plugins.raven.dsn = "https://abc:efg@app.getsentry.com:666/123"''')
-		config = new Configuration(ConfigurationHolder.config.grails.plugins.raven)
+		config = new Configuration(grailsApplication.config.grails.plugins.raven)
 
 		assertEquals "https://app.getsentry.com:666/api/store/", config.sentryURL
 	}
 
 	public void testConfigurationWithPort() {
 		mockConfig('''grails.plugins.raven.dsn = "https://abc:efg@app.getsentry.com:666/123"''')
-		Configuration config = new Configuration(ConfigurationHolder.config.grails.plugins.raven)
+		Configuration config = new Configuration(grailsApplication.config.grails.plugins.raven)
 
 		assertEquals 666, config.port
 		assertEquals "https://app.getsentry.com:666/api/store/", config.sentryURL
@@ -83,7 +84,7 @@ class ConfigurationTests extends GrailsUnitTestCase {
 
 	public void testServerName() {
 		mockConfig('''grails.plugins.raven.dsn = "https://abc:efg@app.getsentry.com/path/to/api/123"''')
-		Configuration config = new Configuration(ConfigurationHolder.config.grails.plugins.raven)
+		Configuration config = new Configuration(grailsApplication.config.grails.plugins.raven)
 
 		assertEquals InetAddress.localHost?.canonicalHostName, config.serverName
 	}
@@ -93,7 +94,7 @@ class ConfigurationTests extends GrailsUnitTestCase {
             grails.plugins.raven.dsn = "https://abc:efg@app.getsentry.com/path/to/api/123"
             grails.plugins.raven.serverName = "testServerName"
         ''')
-		Configuration config = new Configuration(ConfigurationHolder.config.grails.plugins.raven)
+		Configuration config = new Configuration(grailsApplication.config.grails.plugins.raven)
 
 		assertEquals "testServerName", config.serverName
 	}
@@ -101,7 +102,7 @@ class ConfigurationTests extends GrailsUnitTestCase {
 	public void testActiveProperty() {
 		// Default true
 		mockConfig('''grails.plugins.raven.dsn = "https://abc:efg@app.getsentry.com/path/to/api/123"''')
-		Configuration config = new Configuration(ConfigurationHolder.config.grails.plugins.raven)
+		Configuration config = new Configuration(grailsApplication.config.grails.plugins.raven)
 
 		assertTrue config.active
 
@@ -110,7 +111,7 @@ class ConfigurationTests extends GrailsUnitTestCase {
             grails.plugins.raven.dsn = "https://abc:efg@app.getsentry.com/path/to/api/123"
             grails.plugins.raven.active = false
         ''')
-		config = new Configuration(ConfigurationHolder.config.grails.plugins.raven)
+		config = new Configuration(grailsApplication.config.grails.plugins.raven)
 
 		assertFalse config.active
 	}
