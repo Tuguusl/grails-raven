@@ -4,7 +4,7 @@ import grails.plugins.raven.SentryAppender
 import org.apache.log4j.Logger
 
 class RavenGrailsPlugin {
-    def version = "0.6.0-TGU"
+    def version = "0.6.1-TXR"
     def clientVersion = "Raven-grails $version"
     def grailsVersion = "1.3.9 > *"
     def dependsOn = [:]
